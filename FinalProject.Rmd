@@ -1,0 +1,129 @@
+---
+title: "Practical Machine Learning - Final Project"
+author: "Wiktoria Urantowka"
+date: "11/3/2017"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1. Introduction##
+
+The goal of this analysis is to build a classifier algorith that predicts if a performed excercise was done correctly or not and if not in what way.Classification is build using the data from accelerometers placed on the belt, forearm, arm, and dumbell as well as responce variables: classes A, B, C, D and E, class A corresponding to a correct execution of the exercise, and the remaining ones to common mistakes. 
+
+##2. Loading and partitioning data##
+```{r simulation, message=FALSE, warning=FALSE}
+trainURL <-"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testURL <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+data_training <-read.csv(url(trainURL), na.strings=c("NA","#DIV/0",""))
+data_validation <-read.csv(url(testURL), na.strings=c("NA","#DIV/0",""))
+dim(data_training)
+set.seed(1001)
+library(caret)
+library(randomForest)
+inTrain<-createDataPartition(data_training$classe, p=0.8, list = FALSE)
+training <-data_training[inTrain,]
+testing <-data_training[-inTrain,]
+```
+
+```{r}
+dim(data_training) 
+dim(training) 
+dim(testing)
+```
+
+##3. Cleaning Data##
+
+3.1 Remove variables with very low variance
+
+```{r}
+lowvar <- nearZeroVar(training, saveMetrics = TRUE)
+training <-training[-lowvar$nzv==FALSE]
+dim(training)
+```
+
+3.2 Remove variables with high percentage of missing values
+
+a. Compute percentage of NA for each variable
+```{r}
+na_count <- sapply(training, function(y) sum(length(which(is.na(y)))))
+na_count <-data.frame(colnames(training),na_count)
+na_count[,2]<-na_count$na_count/dim(training)[1]
+na_percent<-na_count
+head(na_percent, n=12)
+sum(na_percent$na_count==0)/length(na_percent[,2])
+```
+Half of variables have more then 95 % of NA. They are useless and will be removed from the sample
+
+b. Removing variables with prevalence of NA
+```{r}
+columns_left <-subset(na_percent, na_count == 0)[,1]
+cleantraining <-training[,as.character(columns_left)]
+dim(cleantraining)
+```
+
+3.3 Reducing Dimentions
+
+a. Removing variables that have clearly nothing to do with the the response variable
+```{r}
+cleantraining <-cleantraining[c(-1)][c(-1)][c(-1)][c(-1)][c(-1)]
+```
+
+b. Dealing with collinearity 
+```{r}
+##correlating numerical variables
+set_for_cor <-cleantraining[c(-54)]
+corr <-cor(set_for_cor)
+hc<-findCorrelation(corr,cutoff = 0.6, verbose=FALSE, names=FALSE)
+reduced_data <-cleantraining[,-c(hc)]
+dim(reduced_data)
+```
+findCorrelation() function looks up variables whose correlation corresponds to the defined cutoff (here 0.6) and out of the paire of correlated variables selects the one with the higher correlation with the remaining ones, so facilitates the selection of those to remove. Another 30 variables are dropped.
+Out of 160 candidate predictors, after some cleanup we remain with 29 and are ready to proceed to the prediction.
+
+##4 Prediction using Decision Tree##  
+4.1 Model Fitting on the training subsample
+```{r}
+set.seed(1001)
+library(rpart)
+modFit1 <-rpart(classe~ .,data=reduced_data, method="class")
+plot( modFit1,uniform=TRUE, main="Decision Tree")
+text(modFit1, cex=0.5)
+```  
+
+4.2 Prediction on the testing subsample and assessing the out of sample error
+ 
+```{r}
+predictions1 <-predict( modFit1, testing, type="class")
+confusionMatrix<- confusionMatrix(predictions1, testing$classe)
+confusionMatrix
+plot(confusionMatrix$table, main="Decision Tree Confusion Matrix (Accuracy=0.74)")  
+```  
+    
+Accuracy of 0.74 indicated that the model probably make sence but is not very high either. Let's try random forest to see if we can get any better. As it uses boosing to build trees and select variables, it is expected thet the accuracy will increase.
+
+##5 Prediction using Random Forest##
+5.1 Model Fitting on the training subsample
+```{r}
+set.seed(1001)
+modFit2 <-randomForest(classe~ .,data=reduced_data)
+```  
+5.2 Prediction on the testing subsample and assessing the out of sample error
+```{r}
+predictions2 <-predict( modFit2, testing, type="class")
+confusionMatrix2<- confusionMatrix(predictions2, testing$classe)
+confusionMatrix2
+plot(confusionMatrix2$table, main="Random Forest Confusion Matrix (Accuracy=0.99)")  
+```  
+  
+Accuracy of 0.99 indicates that in 99% of cases the qualification of execrcise into particular class is correct. Random forest does its job very well and the research of alternative algorithm stops here.
+
+##6 Prediction on validation set##
+```{r}
+predictions3 <- predict(modFit2, data_validation, type = "class")
+predictions3[1:10]
+```
+
+Good day
