@@ -7,3 +7,4 @@ The goal of this analysis is to build a classifier algorith that predicts if a p
 This analysis it's an exploration of some of machine learning techniques and comparison of their results.  
   
 --> inalProject.Rmd contains analysis steps together with the code used for its implementation.  
+ 
