@@ -1,0 +1,24 @@
+---
+title: "Where to have a quick and cheap bite in Geneva?"
+author: "Wiktoria Urantowka"
+date: "12/11/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The goal of this map is to help people that visit Geneva to find the best kebab and fondu places within 15 min walk radius from the main train station.
+```{r cars}
+library(leaflet)
+geneva_map = leaflet() %>% addTiles() %>%
+  addMarkers(lat=46.210428, lng=6.154146, popup = "Best Fondu in Geneva") %>%
+  
+  addRectangles( lat1 =46.208839, lng1 = 6.143335, 
+                lat2 =46.209388 , lng2 = 6.14664, popup = "Best Kebabs in Geneva")
+ geneva_map
+
+```
+
+##Bon appetit!   
